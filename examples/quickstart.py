@@ -1,30 +1,3 @@
-# aiohttp-validator
-
-[![Downloads][download-badge]][download-url]
-[![License][licence-badge]][licence-url]
-[![Python Versions][python-version-badge]][python-version-url]
-
-[download-badge]: https://static.pepy.tech/personalized-badge/aiohttp-validator?period=month&units=international_system&left_color=grey&right_color=orange&left_text=Downloads/month
-[download-url]: https://pepy.tech/project/aiohttp-validator
-[licence-badge]: https://img.shields.io/badge/license-Unlicense-blue.svg
-[licence-url]: https://github.com/dapper91/aiohttp-validator/blob/master/LICENSE
-[python-version-badge]: https://img.shields.io/pypi/pyversions/aiohttp-validator.svg
-[python-version-url]: https://pypi.org/project/aiohttp-validator
-
-
-aiohttp simple pydantic http request validator
-
-
-## Installation
-
-```shell
-pip install aiohttp-validator
-```
-
-
-## A Simple Example
-
-```py
 from typing import Any, Dict, List
 
 import pydantic
@@ -86,5 +59,3 @@ app = web.Application()
 app.add_routes(routes)
 
 web.run_app(app, port=8080)
-
-```
