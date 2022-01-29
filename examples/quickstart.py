@@ -16,7 +16,7 @@ async def get_posts(request: web.Request, tags: List[str], limit: pydantic.conin
     assert isinstance(tags, list)
     assert isinstance(limit, int)
     assert isinstance(offset, int)
-    # you code here ...
+    # your code here ...
 
     return web.Response(status=200)
 
@@ -45,7 +45,7 @@ async def create_post(request: web.Request, body: Post, headers: RequestHeaders,
     assert isinstance(headers, RequestHeaders)
     assert isinstance(date, dt.date)
     assert isinstance(section, str)
-    # you code here ...
+    # your code here ...
 
     return web.Response(status=201)
 
@@ -60,7 +60,7 @@ async def create_user(request: web.Request, body: Dict[str, Any], headers: Reque
     assert isinstance(body, dict)
     assert isinstance(headers, RequestHeaders)
     assert isinstance(cookies, AuthCookies)
-    # you code here ...
+    # your code here ...
 
     return web.Response(status=201)
 
