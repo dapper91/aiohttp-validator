@@ -3,6 +3,7 @@ import inspect
 import json
 import typing
 from collections import defaultdict
+from types import SimpleNamespace
 from typing import Any, Callable, Collection, Dict, Type
 
 import multidict
@@ -10,7 +11,12 @@ import pydantic
 from aiohttp import web
 
 
-def extract_annotations(func: Callable, body_argname: str, headers_argname: str, cookies_argname: str):
+def extract_annotations(
+        func: Callable,
+        body_argname: str,
+        headers_argname: str,
+        cookies_argname: str,
+) -> SimpleNamespace:
     body_annotation, headers_annotation, cookies_annotation, params_annotations = None, None, None, {}
 
     signature = inspect.signature(func)
@@ -30,7 +36,12 @@ def extract_annotations(func: Callable, body_argname: str, headers_argname: str,
                 param.default if param.default is not inspect.Parameter.empty else ...,
             )
 
-    return body_annotation, headers_annotation, cookies_annotation, params_annotations
+    return SimpleNamespace(
+        body=body_annotation,
+        headers=headers_annotation,
+        cookies=cookies_annotation,
+        params=params_annotations,
+    )
 
 
 def multidict_to_dict(mdict: multidict.MultiMapping) -> Dict[str, Any]:
@@ -123,19 +134,16 @@ def validated(
     def decorator(func: Callable) -> Callable:
         annotations = extract_annotations(func, body_argname, headers_argname, cookies_argname)
 
-        body_annotation, headers_annotation, cookies_annotation, params_annotations = annotations
-        params_model = pydantic.create_model('Params', **params_annotations)
+        params_model = pydantic.create_model('Params', **annotations.params)
 
         @ft.wraps(func)
         async def wrapper(request: web.Request, *args, **kwargs) -> Any:
-            if body_annotation is not None:
-                kwargs[body_argname] = await process_body(request, body_annotation)
-
-            if headers_annotation is not None:
-                kwargs[headers_argname] = await process_headers(request, headers_annotation)
-
-            if cookies_annotation is not None:
-                kwargs[cookies_argname] = await process_cookes(request, cookies_annotation)
+            if annotations.body is not None:
+                kwargs[body_argname] = await process_body(request, annotations.body)
+            if annotations.headers is not None:
+                kwargs[headers_argname] = await process_headers(request, annotations.headers)
+            if annotations.cookies is not None:
+                kwargs[cookies_argname] = await process_cookes(request, annotations.cookies)
 
             fitted_query = fit_multidict_to_model(request.query, params_model)
             try:
