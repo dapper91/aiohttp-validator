@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "aiohttp-validator"
+version = "0.1.0"
+description = "aiohttp simple pydantic validator"
+authors = ["Dmitry Pershin <dapper1291@gmail.com>"]
+license = "Unlicense"
+readme = "README.md"
+homepage = "https://github.com/dapper91/aiohttp-validator"
+repository = "https://github.com/dapper91/aiohttp-validator"
+keywords = ["aiohttp", "pydantic", "validation", "http", "asyncio"]
+classifiers = [
+    "License :: Public Domain",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Framework :: AsyncIO",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+aiohttp = "^3.7.0"
+pydantic = "^1.8.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
