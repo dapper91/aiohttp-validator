@@ -97,3 +97,27 @@ app.add_routes(routes)
 web.run_app(app, port=8080)
 
 ```
+
+If any path or query parameter name are clashes with body, headers or cookies argument 
+for some reason the last can be renamed:
+
+```py
+@routes.post('/{cookies}')
+@validator.validated(cookies_argname='_cookies')
+async def method(request: web.Request, body: Dict[str, Any], _cookies: AuthCookies, cookies: str):
+    # your code here ...
+
+    return web.Response(status=201)
+```
+
+If any argname is `None` the corresponding request part will not be passed to the function
+and argname can be used as a path or query parameter.
+
+```py
+@routes.post('/{body}/{headers}')
+@validator.validated(body_argname=None, headers_argname=None, cookies_argname=None)
+async def method(request: web.Request, body: str, headers: str, cookies: str = ''):
+    # your code here ...
+
+    return web.Response(status=201)
+```
