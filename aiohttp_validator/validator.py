@@ -131,6 +131,20 @@ def validated(
         headers_argname: Optional[str] = 'headers',
         cookies_argname: Optional[str] = 'cookies',
 ) -> Callable:
+    """
+    Creates a function validating decorator.
+
+    If any path or query parameter name are clashes with body, headers or cookies argument for some reason
+    the last can be renamed. If any argname is `None` the corresponding request part will not be passed to the function
+    and argname can be used as a path or query parameter.
+
+    :param body_argname: argument name the request body is passed by
+    :param headers_argname: argument name the request headers is passed by
+    :param cookies_argname: argument name the request cookies is passed by
+
+    :return: decorator
+    """
+
     def decorator(func: Callable) -> Callable:
         annotations = extract_annotations(func, body_argname, headers_argname, cookies_argname)
 
