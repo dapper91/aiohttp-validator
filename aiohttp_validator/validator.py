@@ -4,7 +4,7 @@ import json
 import typing
 from collections import defaultdict
 from types import SimpleNamespace
-from typing import Any, Callable, Collection, Dict, Type
+from typing import Any, Callable, Collection, Dict, Optional, Type
 
 import multidict
 import pydantic
@@ -13,9 +13,9 @@ from aiohttp import web
 
 def extract_annotations(
         func: Callable,
-        body_argname: str,
-        headers_argname: str,
-        cookies_argname: str,
+        body_argname: Optional[str] = None,
+        headers_argname: Optional[str] = None,
+        cookies_argname: Optional[str] = None,
 ) -> SimpleNamespace:
     body_annotation, headers_annotation, cookies_annotation, params_annotations = None, None, None, {}
 
@@ -24,11 +24,11 @@ def extract_annotations(
     # skip aiohttp method first argument (aiohttp.web.Request)
     parameters = list(signature.parameters.values())[1:]
     for param in parameters:
-        if param.name == body_argname:
+        if body_argname and param.name == body_argname:
             body_annotation = param.annotation
-        elif param.name == headers_argname:
+        elif headers_argname and param.name == headers_argname:
             headers_annotation = param.annotation
-        elif param.name == cookies_argname:
+        elif cookies_argname and param.name == cookies_argname:
             cookies_annotation = param.annotation
         else:
             params_annotations[param.name] = (
@@ -127,9 +127,9 @@ async def process_cookes(request: web.Request, cookies_annotation: Any) -> Any:
 
 
 def validated(
-        body_argname: str = 'body',
-        headers_argname: str = 'headers',
-        cookies_argname: str = 'cookies',
+        body_argname: Optional[str] = 'body',
+        headers_argname: Optional[str] = 'headers',
+        cookies_argname: Optional[str] = 'cookies',
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         annotations = extract_annotations(func, body_argname, headers_argname, cookies_argname)
@@ -138,13 +138,6 @@ def validated(
 
         @ft.wraps(func)
         async def wrapper(request: web.Request, *args, **kwargs) -> Any:
-            if annotations.body is not None:
-                kwargs[body_argname] = await process_body(request, annotations.body)
-            if annotations.headers is not None:
-                kwargs[headers_argname] = await process_headers(request, annotations.headers)
-            if annotations.cookies is not None:
-                kwargs[cookies_argname] = await process_cookes(request, annotations.cookies)
-
             fitted_query = fit_multidict_to_model(request.query, params_model)
             try:
                 params = params_model.parse_obj(dict(fitted_query, **request.match_info))
@@ -152,6 +145,12 @@ def validated(
                 raise web.HTTPBadRequest
 
             kwargs.update(params.dict())
+            if body_argname and annotations.body is not None:
+                kwargs[body_argname] = await process_body(request, annotations.body)
+            if headers_argname and annotations.headers is not None:
+                kwargs[headers_argname] = await process_headers(request, annotations.headers)
+            if cookies_argname and annotations.cookies is not None:
+                kwargs[cookies_argname] = await process_cookes(request, annotations.cookies)
 
             return await func(request, *args, **kwargs)
 
