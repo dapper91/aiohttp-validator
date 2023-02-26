@@ -1,6 +1,6 @@
 import datetime as dt
-from uuid import UUID
 from typing import Any, Dict, List
+from uuid import UUID
 
 import pydantic
 from aiohttp import web

@@ -3,20 +3,26 @@ import inspect
 import json
 import typing
 from collections import defaultdict
-from types import SimpleNamespace
-from typing import Any, Callable, Collection, Dict, Optional, Type
+from typing import Any, Callable, Collection, Coroutine, Dict, List, Mapping, NamedTuple, Optional, Tuple, Type, Union
 
 import multidict
 import pydantic
 from aiohttp import web
 
 
+class FuncAnnotation(NamedTuple):
+    body: Any
+    headers: Any
+    cookies: Any
+    params: Dict[str, Tuple[Any, Any]]
+
+
 def extract_annotations(
-        func: Callable,
+        func: Callable[..., Any],
         body_argname: Optional[str] = None,
         headers_argname: Optional[str] = None,
         cookies_argname: Optional[str] = None,
-) -> SimpleNamespace:
+) -> FuncAnnotation:
     body_annotation, headers_annotation, cookies_annotation, params_annotations = None, None, None, {}
 
     signature = inspect.signature(func)
@@ -36,7 +42,7 @@ def extract_annotations(
                 param.default if param.default is not inspect.Parameter.empty else ...,
             )
 
-    return SimpleNamespace(
+    return FuncAnnotation(
         body=body_annotation,
         headers=headers_annotation,
         cookies=cookies_annotation,
@@ -44,7 +50,7 @@ def extract_annotations(
     )
 
 
-def multidict_to_dict(mdict: multidict.MultiMapping) -> Dict[str, Any]:
+def multidict_to_dict(mdict: multidict.MultiMapping[str]) -> Mapping[str, List[str]]:
     dct = defaultdict(list)
     for key, value in mdict.items():
         dct[key].append(value)
@@ -52,10 +58,13 @@ def multidict_to_dict(mdict: multidict.MultiMapping) -> Dict[str, Any]:
     return dct
 
 
-def fit_multidict_to_model(mdict: multidict.MultiMapping, model: Type[pydantic.BaseModel]) -> Dict[str, Any]:
+def fit_multidict_to_model(
+        mdict: multidict.MultiMapping[str],
+        model: Type[pydantic.BaseModel],
+) -> Mapping[str, Union[str, List[str]]]:
     dct = multidict_to_dict(mdict)
 
-    fitted = {}
+    fitted: Dict[str, Union[str, List[str]]] = {}
     for key, value in dct.items():
         field = model.__fields__.get(key)
         if field is None:
@@ -72,9 +81,14 @@ def fit_multidict_to_model(mdict: multidict.MultiMapping, model: Type[pydantic.B
     return fitted
 
 
-async def process_body(request: web.Request, body_annotation: Any) -> Any:
+BodyType = Union[str, bytes, Dict[Any, Any], pydantic.BaseModel]
+
+
+async def process_body(request: web.Request, body_annotation: Any) -> BodyType:
     try:
         body_type = typing.get_origin(body_annotation) or body_annotation
+
+        body: BodyType
         if issubclass(body_type, str):
             body = await request.text()
         elif issubclass(body_type, bytes):
@@ -95,7 +109,10 @@ async def process_body(request: web.Request, body_annotation: Any) -> Any:
     return body
 
 
-async def process_headers(request: web.Request, headers_annotation: Any) -> Any:
+HeaderType = Union[Mapping[str, str], pydantic.BaseModel]
+
+
+async def process_headers(request: web.Request, headers_annotation: Any) -> HeaderType:
     headers_type = typing.get_origin(headers_annotation) or headers_annotation
     if issubclass(headers_type, dict):
         headers = request.headers
@@ -111,7 +128,10 @@ async def process_headers(request: web.Request, headers_annotation: Any) -> Any:
     return headers
 
 
-async def process_cookes(request: web.Request, cookies_annotation: Any) -> Any:
+CookiesType = Union[Mapping[str, str], pydantic.BaseModel]
+
+
+async def process_cookes(request: web.Request, cookies_annotation: Any) -> CookiesType:
     cookies_type = typing.get_origin(cookies_annotation) or cookies_annotation
     if issubclass(cookies_type, dict):
         cookies = request.cookies
@@ -126,11 +146,14 @@ async def process_cookes(request: web.Request, cookies_annotation: Any) -> Any:
     return cookies
 
 
+FuncType = Callable[..., Coroutine[Any, Any, web.StreamResponse]]
+
+
 def validated(
         body_argname: Optional[str] = 'body',
         headers_argname: Optional[str] = 'headers',
         cookies_argname: Optional[str] = 'cookies',
-) -> Callable:
+) -> Callable[[FuncType], FuncType]:
     """
     Creates a function validating decorator.
 
@@ -145,13 +168,14 @@ def validated(
     :return: decorator
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: FuncType) -> FuncType:
         annotations = extract_annotations(func, body_argname, headers_argname, cookies_argname)
 
-        params_model = pydantic.create_model('Params', **annotations.params)
+        params_model: Type[pydantic.BaseModel] = \
+            pydantic.create_model('Params', **annotations.params)  # type: ignore[arg-type]
 
         @ft.wraps(func)
-        async def wrapper(request: web.Request, *args, **kwargs) -> Any:
+        async def wrapper(request: web.Request, *args: Any, **kwargs: Any) -> web.StreamResponse:
             fitted_query = fit_multidict_to_model(request.query, params_model)
             try:
                 params = params_model.parse_obj(dict(fitted_query, **request.match_info))

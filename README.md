@@ -3,6 +3,8 @@
 [![Downloads][download-badge]][download-url]
 [![License][licence-badge]][licence-url]
 [![Python Versions][python-version-badge]][python-version-url]
+[![Build status][build-badge]][build-url]
+[![Code coverage][coverage-badge]][coverage-url]
 
 [download-badge]: https://static.pepy.tech/personalized-badge/aiohttp-validator?period=month&units=international_system&left_color=grey&right_color=orange&left_text=Downloads/month
 [download-url]: https://pepy.tech/project/aiohttp-validator
@@ -11,6 +13,10 @@
 [python-version-badge]: https://img.shields.io/pypi/pyversions/aiohttp-validator.svg
 [python-version-url]: https://pypi.org/project/aiohttp-validator
 
+[build-badge]: https://github.com/dapper91/aiohttp-validator/actions/workflows/test.yml/badge.svg?branch=master
+[build-url]: https://github.com/dapper91/aiohttp-validator/actions/workflows/test.yml
+[coverage-badge]: https://codecov.io/gh/dapper91/aiohttp-validator/branch/master/graph/badge.svg
+[coverage-url]: https://codecov.io/gh/dapper91/aiohttp-validator
 
 aiohttp simple pydantic http request validator
 
@@ -98,7 +104,7 @@ web.run_app(app, port=8080)
 
 ```
 
-If any path or query parameter name are clashes with body, headers or cookies argument 
+If any path or query parameter name are clashes with body, headers or cookies argument
 for some reason the last can be renamed:
 
 ```py
