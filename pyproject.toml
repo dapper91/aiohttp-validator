@@ -9,6 +9,7 @@ homepage = "https://github.com/dapper91/aiohttp-validator"
 repository = "https://github.com/dapper91/aiohttp-validator"
 keywords = ["aiohttp", "pydantic", "validation", "http", "asyncio"]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
     "License :: Public Domain",
     "Programming Language :: Python :: 3",
     "Intended Audience :: Developers",
