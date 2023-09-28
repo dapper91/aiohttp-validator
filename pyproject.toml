@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiohttp-validator"
-version = "0.1.4"
+version = "0.2.0"
 description = "aiohttp simple pydantic validator"
 authors = ["Dmitry Pershin <dapper1291@gmail.com>"]
 license = "Unlicense"
