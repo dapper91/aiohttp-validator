@@ -3,7 +3,7 @@ import inspect
 import json
 import typing
 from collections import defaultdict
-from typing import Any, Callable, Collection, Coroutine, Dict, List, Mapping, NamedTuple, Optional, Tuple, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Mapping, NamedTuple, Optional, Type, Union
 
 import multidict
 import pydantic
@@ -14,7 +14,7 @@ class FuncAnnotation(NamedTuple):
     body: Any
     headers: Any
     cookies: Any
-    params: Dict[str, Tuple[Any, Any]]
+    params: Dict[str, Any]
 
 
 def extract_annotations(
@@ -66,14 +66,12 @@ def fit_multidict_to_model(
 
     fitted: Dict[str, Union[str, List[str]]] = {}
     for key, value in dct.items():
-        field = model.__fields__.get(key)
+        field = model.model_fields.get(key)
         if field is None:
             fitted[key] = value
         else:
-            field_type = typing.get_origin(field.outer_type_) or field.type_
-            if inspect.isclass(field_type) and issubclass(field_type, (str, bytes, bytearray)):
-                fitted[key] = value[0]
-            elif issubclass(field_type, Collection):
+            collection_types = (list, tuple)
+            if field.annotation in collection_types or typing.get_origin(field.annotation) in collection_types:
                 fitted[key] = value
             else:
                 fitted[key] = value[0]
@@ -97,7 +95,7 @@ async def process_body(request: web.Request, body_annotation: Any) -> BodyType:
             body = await request.json()
         elif issubclass(body_type, pydantic.BaseModel):
             try:
-                body = body_type.parse_obj(await request.json())
+                body = body_type.model_validate(await request.json())
             except pydantic.ValidationError:
                 raise web.HTTPUnprocessableEntity
         else:
@@ -119,7 +117,7 @@ async def process_headers(request: web.Request, headers_annotation: Any) -> Head
     elif issubclass(headers_type, pydantic.BaseModel):
         fitted_headers = fit_multidict_to_model(request.headers, headers_type)
         try:
-            headers = headers_type.parse_obj(fitted_headers)
+            headers = headers_type.model_validate(fitted_headers)
         except pydantic.ValidationError:
             raise web.HTTPBadRequest
     else:
@@ -137,7 +135,7 @@ async def process_cookes(request: web.Request, cookies_annotation: Any) -> Cooki
         cookies = request.cookies
     elif issubclass(cookies_type, pydantic.BaseModel):
         try:
-            cookies = cookies_type.parse_obj(request.cookies)
+            cookies = cookies_type.model_validate(request.cookies)
         except pydantic.ValidationError:
             raise web.HTTPBadRequest
     else:
@@ -150,6 +148,7 @@ FuncType = Callable[..., Coroutine[Any, Any, web.StreamResponse]]
 
 
 def validated(
+        config: Optional[pydantic.ConfigDict] = None,
         body_argname: Optional[str] = 'body',
         headers_argname: Optional[str] = 'headers',
         cookies_argname: Optional[str] = 'cookies',
@@ -161,6 +160,7 @@ def validated(
     the last can be renamed. If any argname is `None` the corresponding request part will not be passed to the function
     and argname can be used as a path or query parameter.
 
+    :param config: pydantic config
     :param body_argname: argument name the request body is passed by
     :param headers_argname: argument name the request headers is passed by
     :param cookies_argname: argument name the request cookies is passed by
@@ -172,17 +172,21 @@ def validated(
         annotations = extract_annotations(func, body_argname, headers_argname, cookies_argname)
 
         params_model: Type[pydantic.BaseModel] = \
-            pydantic.create_model('Params', **annotations.params)  # type: ignore[arg-type]
+            pydantic.create_model(
+                'Params',
+                __config__=config,
+                **annotations.params,
+            )
 
         @ft.wraps(func)
         async def wrapper(request: web.Request, *args: Any, **kwargs: Any) -> web.StreamResponse:
             fitted_query = fit_multidict_to_model(request.query, params_model)
             try:
-                params = params_model.parse_obj(dict(fitted_query, **request.match_info))
+                params = params_model.model_validate(dict(fitted_query, **request.match_info))
             except pydantic.ValidationError:
                 raise web.HTTPBadRequest
 
-            kwargs.update(params.dict())
+            kwargs.update(params.model_dump())
             if body_argname and annotations.body is not None:
                 kwargs[body_argname] = await process_body(request, annotations.body)
             if headers_argname and annotations.headers is not None:
