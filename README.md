@@ -32,8 +32,8 @@ pip install aiohttp-validator
 
 ```py
 import datetime as dt
+from typing import Any, Dict, List, TypedDict
 from uuid import UUID
-from typing import Any, Dict, List
 
 import pydantic
 from aiohttp import web
@@ -54,7 +54,7 @@ async def get_posts(request: web.Request, tags: List[str], limit: pydantic.conin
     return web.Response(status=200)
 
 
-class RequestHeaders(pydantic.BaseModel):
+class RequestHeaders(TypedDict):
     requestId: int
 
 
@@ -72,10 +72,10 @@ class Post(pydantic.BaseModel):
 
 
 @routes.post('/posts/{section}/{date}')
-@validator.validated()
+@validator.validated(config=pydantic.ConfigDict(extra='forbid'))
 async def create_post(request: web.Request, body: Post, headers: RequestHeaders, section: str, date: dt.date):
     assert isinstance(body, Post)
-    assert isinstance(headers, RequestHeaders)
+    assert isinstance(headers, dict)
     assert isinstance(date, dt.date)
     assert isinstance(section, str)
     # your code here ...
@@ -88,7 +88,7 @@ class AuthCookies(pydantic.BaseModel):
 
 
 @routes.post('/users')
-@validator.validated()
+@validator.validated(config=pydantic.ConfigDict(extra='forbid'))
 async def create_user(request: web.Request, body: Dict[str, Any], headers: RequestHeaders, cookies: AuthCookies):
     assert isinstance(body, dict)
     assert isinstance(headers, RequestHeaders)
