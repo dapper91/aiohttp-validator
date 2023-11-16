@@ -18,6 +18,7 @@ classifiers = [
     "Framework :: AsyncIO",
     'Framework :: Pydantic',
     'Framework :: Pydantic :: 2',
+    "Typing :: Typed",
 ]
 
 [tool.poetry.dependencies]
